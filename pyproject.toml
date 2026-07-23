@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pinproject"
+version = "0.1.0"
+description = "Disney pin catalog PDF to Excel parser"
+requires-python = ">=3.10"
+dependencies = ["PyMuPDF>=1.24", "openpyxl>=3.1", "Pillow>=10.0", "json-repair>=0.30"]
+
+[tool.setuptools.packages.find]
+include = ["pin_catalog_parser*"]

@@ -77,6 +77,11 @@ Open `notebooks/pinproject_colab_gpu_runner.ipynb` in Google Colab. The notebook
 8. Downloads `disney-pin-catalogue.xlsx` as a convenience copy.
 
 For the fastest reliable run, leave `USE_OLLAMA_VISION = False`. Turn it on only after selecting **Runtime → Change runtime type → GPU** in Colab. Keep `SAVE_TO_GOOGLE_DRIVE = True` if you want the spreadsheet preserved after the Colab runtime disconnects.
+4. Optionally installs and starts Ollama for GPU vision mode.
+5. Runs the existing `run_parser.sh` helper.
+6. Downloads `output/disney-pin-catalogue.xlsx`.
+
+For the fastest reliable run, leave `USE_OLLAMA_VISION = False`. Turn it on only after selecting **Runtime → Change runtime type → GPU** in Colab.
 
 ## Development notes
 

@@ -1,61 +1,84 @@
-# Disney Pin Catalog Parser — Phase 1 MVP
+# Disney Pin Catalog Parser
 
-## Where to put your catalog PDFs
+Convert Disney pin catalog PDFs into one Excel workbook with product rows and embedded images.
 
-Create a folder named `catalog-pdfs` next to the `pin_catalog_parser` folder, then place the PDF files you want processed inside it:
+## Inputs and outputs
+
+Put PDFs in `catalog-pdfs` next to the Python package:
 
 ```text
-project-folder/
+pinproject/
 ├── catalog-pdfs/
 │   ├── disney-pins-january-2026.pdf
 │   └── disney-pins-february-2026.pdf
+├── output/
 └── pin_catalog_parser/
 ```
 
-You can use any PDF filenames, including spaces, punctuation, and uppercase `.PDF` extensions. The program processes every PDF directly inside `catalog-pdfs` and ignores unrelated files.
-
-## Run the parser
-
-After moving the complete project folder to `~/Documents/pinproject`, open Terminal and make the helper executable once:
-
-```bash
-cd ~/Documents/pinproject
-chmod +x run_parser.sh
-chmod +x setup_ollama.sh
-~/Documents/pinproject/setup_ollama.sh
-```
-
-This installs the local `qwen2.5vl:3b` vision model. Ollama reports this tag as `Q4_K_M`, a 4-bit quantization. Ollama manages the underlying GGUF data in its own model store; do not manually move or rename a `.gguf` file.
-
-Run the parser with:
-
-```bash
-~/Documents/pinproject/run_parser.sh
-```
-
-The helper creates a temporary virtual environment, installs the project dependencies (including Pillow for embedded Excel images), processes every PDF in `catalog-pdfs`, writes Excel files to `output`, and removes the temporary environment when finished. Press `Ctrl-C` to cancel; cleanup also runs then. A forced kill (`kill -9`) cannot run cleanup, so remove any leftover temporary folder beginning with `/tmp/pinproject-venv` if that rare case occurs.
-
-After it finishes, the `output` folder will contain one combined Excel file for all PDFs:
+The parser processes every PDF directly inside `catalog-pdfs` and writes:
 
 ```text
-output/
-├── disney-pin-catalogue.xlsx
-├── disney-pins-january-2026/
-│   └── images/
-└── disney-pins-february-2026/
-    └── images/
+output/disney-pin-catalogue.xlsx
 ```
 
-The combined Excel file contains embedded images and the columns `Store`, `Date`, `Collection`, `Item`, `Price`, `Notes`, and `Image`. Empty/unusable product rows are omitted. The source PDF filename is included in `Notes`.
+The workbook includes `Store`, `Date`, `Collection`, `Item`, `Price`, `Notes`, and `Image` columns. Empty/unusable rows are skipped, and the source PDF filename is included in the `Notes` column.
 
-The first page is treated as catalog metadata/cover material, so headings such as `PIN PRODUCT CATALOG` and publication dates are not exported as products. Product pages are grouped by image and nearby text; individual pins remain separate rows even when they share a collection.
+## Fast local run (macOS, Linux, or Colab)
 
-Vision verification is designed as a local-only optional step for low-confidence rows. The adapter supports a local Qwen2.5-VL 3B 4-bit model directory; no cloud service is used. The deterministic parser remains the default until a model directory is configured and tested against your catalogs.
-
-To process a single file instead, run:
+The default path is the fast deterministic parser. It does **not** require Ollama and is the recommended first run.
 
 ```bash
-python3 -m pin_catalog_parser.main ~/Documents/pinproject/catalog-pdfs/disney-pins-january-2026.pdf --output ~/Documents/pinproject/output
+cd /path/to/pinproject
+chmod +x run_parser.sh
+./run_parser.sh
 ```
 
-The first pass is deterministic: PyMuPDF extracts text, font metadata, coordinates, and embedded images; the relationship builder associates each image with nearby text. The confidence field is retained in the model for the Phase 1.1 local Qwen verifier. A future macOS app can call `process()` directly from a Swift/PyObjC shell or package this Python runtime with PyInstaller.
+You can pass a single PDF or a different folder:
+
+```bash
+./run_parser.sh /path/to/catalog-or-pdf
+```
+
+You can also run the module directly:
+
+```bash
+python3 -m pip install -e .
+python3 -m pin_catalog_parser.main catalog-pdfs --output output
+```
+
+## Optional GPU/Ollama vision mode
+
+Vision mode can improve difficult pages, but it is slower and requires Ollama plus a vision model. Use it only when you have GPU resources available, such as a Google Colab GPU runtime or a local NVIDIA/Mac GPU setup supported by Ollama.
+
+```bash
+cd /path/to/pinproject
+chmod +x setup_ollama.sh run_parser.sh
+./setup_ollama.sh
+PIN_USE_OLLAMA=1 ./run_parser.sh
+```
+
+By default this uses `qwen2.5vl:3b`. Override it with:
+
+```bash
+PIN_OLLAMA_MODEL=qwen2.5vl:3b PIN_USE_OLLAMA=1 ./run_parser.sh
+```
+
+## Google Colab GPU notebook
+
+Open `notebooks/pinproject_colab_gpu_runner.ipynb` in Google Colab. The notebook:
+
+1. Lets you set the public GitHub repo URL and branch.
+2. Clones the repo into `/content/pinproject`.
+3. Installs this package.
+4. Optionally installs and starts Ollama for GPU vision mode.
+5. Runs the existing `run_parser.sh` helper.
+6. Downloads `output/disney-pin-catalogue.xlsx`.
+
+For the fastest reliable run, leave `USE_OLLAMA_VISION = False`. Turn it on only after selecting **Runtime → Change runtime type → GPU** in Colab.
+
+## Development notes
+
+- `run_parser.sh` is Bash-compatible and no longer depends on macOS-only zsh path expansion.
+- `setup_ollama.sh` is optional; the repository works without Ollama in deterministic mode.
+- The first page is treated as metadata/cover material and is not exported as products.
+- Product pages are grouped by image and nearby text in deterministic mode, or by overlapping rendered page tiles in Ollama vision mode.

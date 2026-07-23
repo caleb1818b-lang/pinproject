@@ -1,0 +1,12 @@
+# macOS system clutter
+.DS_Store
+
+# Python cache and build files
+__pycache__/
+*.pyc
+build/
+*.egg-info/
+
+# Ignore everything inside output, but keep the folder itself
+output/*
+!output/.gitkeep

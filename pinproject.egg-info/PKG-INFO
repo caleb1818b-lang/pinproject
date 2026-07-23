@@ -1,9 +1,0 @@
-Metadata-Version: 2.4
-Name: pinproject
-Version: 0.1.0
-Summary: Disney pin catalog PDF to Excel parser
-Requires-Python: >=3.10
-Requires-Dist: PyMuPDF>=1.24
-Requires-Dist: openpyxl>=3.1
-Requires-Dist: Pillow>=10.0
-Requires-Dist: json-repair>=0.30

@@ -5,8 +5,9 @@ SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
 PROJECT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
 VENV_DIR="$(mktemp -d -t pinproject-venv.XXXXXX)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
-INPUT_PATH="${1:-$PROJECT_DIR/catalog-pdfs}"
-if [[ $# -gt 0 ]]; then
+INPUT_PATH="${PROJECT_DIR}/catalog-pdfs"
+if [[ $# -gt 0 && "$1" != --* ]]; then
+  INPUT_PATH="$1"
   shift
 fi
 OUTPUT_DIR="${OUTPUT_DIR:-$PROJECT_DIR/output}"
@@ -16,9 +17,16 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-if [[ "${PIN_USE_OLLAMA:-0}" == "1" ]] && ! command -v ollama >/dev/null 2>&1; then
-  echo "PIN_USE_OLLAMA=1 was requested, but Ollama is not installed or not on PATH." >&2
-  echo "Install Ollama or run without PIN_USE_OLLAMA for the fast deterministic parser." >&2
+VISION_DISABLED_BY_ARG=0
+for arg in "$@"; do
+  if [[ "$arg" == "--no-vision" ]]; then
+    VISION_DISABLED_BY_ARG=1
+  fi
+done
+
+if [[ "${PIN_USE_OLLAMA:-1}" == "1" && "$VISION_DISABLED_BY_ARG" != "1" ]] && ! command -v ollama >/dev/null 2>&1; then
+  echo "Ollama vision is enabled by default, but Ollama is not installed or not on PATH." >&2
+  echo "Install Ollama or set PIN_USE_OLLAMA=0/pass --no-vision for the fast deterministic parser." >&2
   exit 1
 fi
 

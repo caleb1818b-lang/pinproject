@@ -35,7 +35,7 @@ def process(pdf: Path, output_dir: Path, use_ollama: bool = False):
             raise RuntimeError(f"Required Ollama model unavailable: {model_name}")
         print("  Ollama vision: enabled", flush=True)
     else:
-        print("  Fast deterministic parser: enabled (set PIN_USE_OLLAMA=1 or pass --vision for Ollama)", flush=True)
+        print("  Fast deterministic parser: enabled (set PIN_USE_OLLAMA=0 or pass --no-vision to disable Ollama)", flush=True)
     collection = ""
     metadata = re.compile(r"(?:catalog|product|retail|edition|dimensions|features|store|items shown|available while|january|february|march|april|may|june|july|august|september|october|november|december|sunday|monday|tuesday|wednesday|thursday|friday|saturday)", re.I)
     for page in pages:
@@ -98,7 +98,19 @@ def main():
     ap = argparse.ArgumentParser(description="Batch-convert Disney pin catalog PDFs to Excel")
     ap.add_argument("input", type=Path, help="PDF file or folder containing PDFs")
     ap.add_argument("-o", "--output", type=Path, default=Path("output"))
-    ap.add_argument("--vision", action="store_true", default=os.getenv("PIN_USE_OLLAMA", "0") == "1", help="Use Ollama vision extraction instead of the fast deterministic parser")
+    ap.add_argument(
+        "--vision",
+        dest="vision",
+        action="store_true",
+        default=os.getenv("PIN_USE_OLLAMA", "1") == "1",
+        help="Use Ollama vision extraction (default; set PIN_USE_OLLAMA=0 or pass --no-vision to use the fast deterministic parser)",
+    )
+    ap.add_argument(
+        "--no-vision",
+        dest="vision",
+        action="store_false",
+        help="Disable Ollama vision extraction and use the fast deterministic parser",
+    )
     args = ap.parse_args()
     if args.input.is_file():
         pdfs = [args.input] if args.input.suffix.lower() == ".pdf" else []

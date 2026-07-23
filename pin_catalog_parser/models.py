@@ -24,6 +24,7 @@ class ImageObject:
     bbox: tuple[float, float, float, float]
     data: bytes = b""
     ext: str = "png"
+    image_path: Optional[Path] = None
 
 @dataclass
 class Product:

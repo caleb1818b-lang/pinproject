@@ -70,6 +70,13 @@ Open `notebooks/pinproject_colab_gpu_runner.ipynb` in Google Colab. The notebook
 1. Lets you set the public GitHub repo URL and branch.
 2. Clones the repo into `/content/pinproject`.
 3. Installs this package.
+4. Mounts Google Drive when `SAVE_TO_GOOGLE_DRIVE = True`.
+5. Optionally installs and starts Ollama for GPU vision mode.
+6. Runs the existing `run_parser.sh` helper.
+7. Saves the workbook to `DRIVE_OUTPUT_DIR` (default `/content/drive/MyDrive/pinproject-output`).
+8. Downloads `disney-pin-catalogue.xlsx` as a convenience copy.
+
+For the fastest reliable run, leave `USE_OLLAMA_VISION = False`. Turn it on only after selecting **Runtime → Change runtime type → GPU** in Colab. Keep `SAVE_TO_GOOGLE_DRIVE = True` if you want the spreadsheet preserved after the Colab runtime disconnects.
 4. Optionally installs and starts Ollama for GPU vision mode.
 5. Runs the existing `run_parser.sh` helper.
 6. Downloads `output/disney-pin-catalogue.xlsx`.
@@ -82,3 +89,7 @@ For the fastest reliable run, leave `USE_OLLAMA_VISION = False`. Turn it on only
 - `setup_ollama.sh` is optional; the repository works without Ollama in deterministic mode.
 - The first page is treated as metadata/cover material and is not exported as products.
 - Product pages are grouped by image and nearby text in deterministic mode, or by overlapping rendered page tiles in Ollama vision mode.
+
+## Spreadsheet correctness
+
+The deterministic parser now reads item names and prices from the page text, treats large page headings as collections, supports pages with multiple collection prefixes such as `FIRE ELEMENT - Character Name`, and keeps each product linked to the nearest extracted page image instead of cycling through images after parsing.

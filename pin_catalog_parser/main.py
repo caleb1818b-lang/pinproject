@@ -37,10 +37,10 @@ def process(pdf: Path, output_dir: Path, use_ollama: bool = False):
     else:
         print("  Fast deterministic parser: enabled (set PIN_USE_OLLAMA=1 or pass --vision for Ollama)", flush=True)
     collection = ""
-    metadata = re.compile(r"(?:catalog|product|retail|edition|dimensions|features|store|january|february|march|april|may|june|july|august|september|october|november|december|sunday|monday|tuesday|wednesday|thursday|friday|saturday)", re.I)
+    metadata = re.compile(r"(?:catalog|product|retail|edition|dimensions|features|store|items shown|available while|january|february|march|april|may|june|july|august|september|october|november|december|sunday|monday|tuesday|wednesday|thursday|friday|saturday)", re.I)
     for page in pages:
         first_image_y = min((image.bbox[1] for image in page.images), default=page.height)
-        candidates = [b for b in page.text_blocks if b.bbox[1] < first_image_y and b.bold and len(b.text) < 60 and not metadata.search(b.text) and not re.search(r"\$\s*\d", b.text)]
+        candidates = [b for b in page.text_blocks if b.bbox[1] < first_image_y and b.font_size >= 14 and len(b.text) < 90 and not metadata.search(b.text) and not re.search(r"\$\s*\d", b.text)]
         if candidates:
             collection = max(candidates, key=lambda b: (b.font_size, -b.bbox[1])).text
         if page.number == 1:
@@ -82,10 +82,11 @@ def process(pdf: Path, output_dir: Path, use_ollama: bool = False):
         for item in ai_products:
             products.append(Product(text_value(item.get("Store")) or store, text_value(item.get("Date")) or date, text_value(item.get("Collection")) or collection, text_value(item.get("Item")), text_value(item.get("Price")), text_value(item.get("Notes")), confidence=0.98))
     source_doc.close()
-    # Match extracted images back in page/image order.
-    files = sorted(images_dir.glob("*") )
+    # Vision products do not carry deterministic image paths, so match those only as a fallback.
+    files = sorted(images_dir.glob("*"))
     for index, product in enumerate(products):
-        product.image_path = files[index % len(files)] if files else None
+        if product.image_path is None:
+            product.image_path = files[index % len(files)] if files else None
     usable = []
     for product in products:
         if product.item.strip() or product.price.strip():

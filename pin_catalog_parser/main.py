@@ -15,7 +15,7 @@ def text_value(value) -> str:
     if isinstance(value, dict):
         return "; ".join(f"{k}: {text_value(v)}" for k, v in value.items())
     return str(value).strip()
-def process(pdf: Path, output_dir: Path):
+def process(pdf: Path, output_dir: Path, use_ollama: bool = False):
     from .parser.pdf_reader import read_pdf
     from .parser.page_parser import parse_first_page
     from .parser.relationship_builder import products_from_page
@@ -28,18 +28,27 @@ def process(pdf: Path, output_dir: Path):
     rendered_dir.mkdir(parents=True, exist_ok=True)
     source_doc = fitz.open(pdf)
     model_name = os.getenv("PIN_OLLAMA_MODEL", "qwen2.5vl:3b")
-    print(f"  Loaded {len(pages)} pages; checking Ollama model={model_name}...", flush=True)
-    if not ollama_status(model_name):
-        raise RuntimeError(f"Required Ollama model unavailable: {model_name}")
-    print("  Ollama page vision: enabled; fallback disabled", flush=True)
+    print(f"  Loaded {len(pages)} pages", flush=True)
+    if use_ollama:
+        print(f"  Checking Ollama model={model_name}...", flush=True)
+        if not ollama_status(model_name):
+            raise RuntimeError(f"Required Ollama model unavailable: {model_name}")
+        print("  Ollama vision: enabled", flush=True)
+    else:
+        print("  Fast deterministic parser: enabled (set PIN_USE_OLLAMA=1 or pass --vision for Ollama)", flush=True)
     collection = ""
-    metadata = re.compile(r"(?:catalog|product|retail|edition|dimensions|features|store|january|february|march|april|may|june|july|august|september|october|november|december|sunday|monday|tuesday|wednesday|thursday|friday|saturday)", re.I)
+    metadata = re.compile(r"(?:catalog|product|retail|edition|dimensions|features|store|items shown|available while|january|february|march|april|may|june|july|august|september|october|november|december|sunday|monday|tuesday|wednesday|thursday|friday|saturday)", re.I)
     for page in pages:
         first_image_y = min((image.bbox[1] for image in page.images), default=page.height)
-        candidates = [b for b in page.text_blocks if b.bbox[1] < first_image_y and b.bold and len(b.text) < 60 and not metadata.search(b.text) and not re.search(r"\$\s*\d", b.text)]
+        candidates = [b for b in page.text_blocks if b.bbox[1] < first_image_y and b.font_size >= 14 and len(b.text) < 90 and not metadata.search(b.text) and not re.search(r"\$\s*\d", b.text)]
         if candidates:
             collection = max(candidates, key=lambda b: (b.font_size, -b.bbox[1])).text
         if page.number == 1:
+            continue
+        if not use_ollama:
+            page_products = products_from_page(page, store, date, collection)
+            products.extend(page_products)
+            print(f"  Page {page.number}/{len(pages)}: deterministic parser found {len(page_products)} products", flush=True)
             continue
         page_path = rendered_dir / f"page-{page.number:03d}.png"
         source_doc[page.number - 1].get_pixmap(matrix=fitz.Matrix(2.0, 2.0), alpha=False).save(page_path)
@@ -73,10 +82,11 @@ def process(pdf: Path, output_dir: Path):
         for item in ai_products:
             products.append(Product(text_value(item.get("Store")) or store, text_value(item.get("Date")) or date, text_value(item.get("Collection")) or collection, text_value(item.get("Item")), text_value(item.get("Price")), text_value(item.get("Notes")), confidence=0.98))
     source_doc.close()
-    # Match extracted images back in page/image order.
-    files = sorted(images_dir.glob("*") )
+    # Vision products do not carry deterministic image paths, so match those only as a fallback.
+    files = sorted(images_dir.glob("*"))
     for index, product in enumerate(products):
-        product.image_path = files[index % len(files)] if files else None
+        if product.image_path is None:
+            product.image_path = files[index % len(files)] if files else None
     usable = []
     for product in products:
         if product.item.strip() or product.price.strip():
@@ -88,6 +98,7 @@ def main():
     ap = argparse.ArgumentParser(description="Batch-convert Disney pin catalog PDFs to Excel")
     ap.add_argument("input", type=Path, help="PDF file or folder containing PDFs")
     ap.add_argument("-o", "--output", type=Path, default=Path("output"))
+    ap.add_argument("--vision", action="store_true", default=os.getenv("PIN_USE_OLLAMA", "0") == "1", help="Use Ollama vision extraction instead of the fast deterministic parser")
     args = ap.parse_args()
     if args.input.is_file():
         pdfs = [args.input] if args.input.suffix.lower() == ".pdf" else []
@@ -96,7 +107,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     all_products = []
     for pdf in pdfs:
-        products = process(pdf, args.output)
+        products = process(pdf, args.output, use_ollama=args.vision)
         all_products.extend(products)
         print(f"{pdf.name}: {len(products)} products")
     from .excel.exporter import export

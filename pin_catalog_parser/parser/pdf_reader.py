@@ -25,6 +25,7 @@ def read_pdf(path: Path) -> list[PageObjects]:
                 continue
             info = doc.extract_image(xref)
             images.append(ImageObject(xref, tuple(rects[0]), info["image"], info["ext"]))
+        images.sort(key=lambda image: (round(image.bbox[1], 1), round(image.bbox[0], 1)))
         pages.append(PageObjects(page_number, page.rect.width, page.rect.height, blocks, images))
     doc.close()
     return pages

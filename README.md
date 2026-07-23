@@ -23,9 +23,9 @@ output/disney-pin-catalogue.xlsx
 
 The workbook includes `Store`, `Date`, `Collection`, `Item`, `Price`, `Notes`, and `Image` columns. Empty/unusable rows are skipped, and the source PDF filename is included in the `Notes` column.
 
-## Fast local run (macOS, Linux, or Colab)
+## Local run (macOS, Linux, or Colab)
 
-The default path is the fast deterministic parser. It does **not** require Ollama and is the recommended first run.
+Ollama vision extraction is enabled by default because it can improve difficult pages. It requires Ollama plus the configured vision model to be installed and available on `PATH`.
 
 ```bash
 cd /path/to/pinproject
@@ -46,21 +46,31 @@ python3 -m pip install -e .
 python3 -m pin_catalog_parser.main catalog-pdfs --output output
 ```
 
-## Optional GPU/Ollama vision mode
+## Disable Ollama for faster deterministic-only runs
 
-Vision mode can improve difficult pages, but it is slower and requires Ollama plus a vision model. Use it only when you have GPU resources available, such as a Google Colab GPU runtime or a local NVIDIA/Mac GPU setup supported by Ollama.
+The fast deterministic parser does **not** require Ollama. Disable vision when you want the quickest deterministic-only run:
+
+```bash
+cd /path/to/pinproject
+PIN_USE_OLLAMA=0 ./run_parser.sh
+python3 -m pin_catalog_parser.main catalog-pdfs --output output --no-vision
+```
+
+## Ollama vision mode
+
+Vision mode is the default. It is slower than the deterministic parser and works best when you have GPU resources available, such as a Google Colab GPU runtime or a local NVIDIA/Mac GPU setup supported by Ollama. To prepare Ollama and run with the default vision setting:
 
 ```bash
 cd /path/to/pinproject
 chmod +x setup_ollama.sh run_parser.sh
 ./setup_ollama.sh
-PIN_USE_OLLAMA=1 ./run_parser.sh
+./run_parser.sh
 ```
 
 By default this uses `qwen2.5vl:3b`. Override it with:
 
 ```bash
-PIN_OLLAMA_MODEL=qwen2.5vl:3b PIN_USE_OLLAMA=1 ./run_parser.sh
+PIN_OLLAMA_MODEL=qwen2.5vl:3b ./run_parser.sh
 ```
 
 ## Google Colab GPU notebook
@@ -71,17 +81,12 @@ Open `notebooks/pinproject_colab_gpu_runner.ipynb` in Google Colab. The notebook
 2. Clones the repo into `/content/pinproject`.
 3. Installs this package.
 4. Mounts Google Drive when `SAVE_TO_GOOGLE_DRIVE = True`.
-5. Optionally installs and starts Ollama for GPU vision mode.
+5. Installs and starts Ollama for the default GPU vision mode, unless disabled.
 6. Runs the existing `run_parser.sh` helper.
 7. Saves the workbook to `DRIVE_OUTPUT_DIR` (default `/content/drive/MyDrive/pinproject-output`).
 8. Downloads `disney-pin-catalogue.xlsx` as a convenience copy.
 
-For the fastest reliable run, leave `USE_OLLAMA_VISION = False`. Turn it on only after selecting **Runtime → Change runtime type → GPU** in Colab. Keep `SAVE_TO_GOOGLE_DRIVE = True` if you want the spreadsheet preserved after the Colab runtime disconnects.
-4. Optionally installs and starts Ollama for GPU vision mode.
-5. Runs the existing `run_parser.sh` helper.
-6. Downloads `output/disney-pin-catalogue.xlsx`.
-
-For the fastest reliable run, leave `USE_OLLAMA_VISION = False`. Turn it on only after selecting **Runtime → Change runtime type → GPU** in Colab.
+For the default vision run, leave `USE_OLLAMA_VISION = True` after selecting **Runtime → Change runtime type → GPU** in Colab. For the fastest deterministic-only run, set `USE_OLLAMA_VISION = False`, which sets `PIN_USE_OLLAMA=0`. Keep `SAVE_TO_GOOGLE_DRIVE = True` if you want the spreadsheet preserved after the Colab runtime disconnects.
 
 ## Development notes
 
